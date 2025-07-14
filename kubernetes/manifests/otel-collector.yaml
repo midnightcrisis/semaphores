@@ -1,0 +1,197 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: monitoring
+data:
+  otel-collector.yml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      
+      jaeger:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:14250
+          thrift_http:
+            endpoint: 0.0.0.0:14268
+          thrift_compact:
+            endpoint: 0.0.0.0:6831
+          thrift_binary:
+            endpoint: 0.0.0.0:6832
+      
+      zipkin:
+        endpoint: 0.0.0.0:9411
+      
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: 'otel-collector'
+              scrape_interval: 10s
+              static_configs:
+                - targets: ['0.0.0.0:8889']
+    
+    processors:
+      batch:
+        timeout: 1s
+        send_batch_size: 1024
+        send_batch_max_size: 2048
+      
+      memory_limiter:
+        limit_mib: 512
+        spike_limit_mib: 128
+        check_interval: 5s
+      
+      resource:
+        attributes:
+          - key: service.name
+            value: "gke-monitoring"
+            action: upsert
+          - key: service.version
+            value: "1.0.0"
+            action: upsert
+          - key: deployment.environment
+            value: "production"
+            action: upsert
+          - key: k8s.cluster.name
+            value: "gke-cluster"
+            action: upsert
+          - key: k8s.namespace.name
+            from_attribute: k8s.namespace.name
+            action: upsert
+          - key: k8s.pod.name
+            from_attribute: k8s.pod.name
+            action: upsert
+    
+    exporters:
+      # Traces to Jaeger
+      jaeger:
+        endpoint: jaeger-collector:14250
+        tls:
+          insecure: true
+      
+      # Metrics to Prometheus
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+        const_labels:
+          cluster: "gke-cluster"
+          project: "rizzup-de"
+      
+      # Logs to Loki
+      loki:
+        endpoint: http://loki:3100/loki/api/v1/push
+        labels:
+          attributes:
+            service.name: "service_name"
+            service.version: "service_version"
+          resource:
+            deployment.environment: "environment"
+            k8s.cluster.name: "cluster_name"
+            k8s.namespace.name: "namespace_name"
+            k8s.pod.name: "pod_name"
+      
+      # Debug exporter for troubleshooting
+      logging:
+        loglevel: info
+    
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+      pprof:
+        endpoint: 0.0.0.0:1777
+      zpages:
+        endpoint: 0.0.0.0:55679
+    
+    service:
+      extensions: [health_check, pprof, zpages]
+      pipelines:
+        traces:
+          receivers: [otlp, jaeger, zipkin]
+          processors: [memory_limiter, batch, resource]
+          exporters: [jaeger, logging]
+        
+        metrics:
+          receivers: [otlp, prometheus]
+          processors: [memory_limiter, batch, resource]
+          exporters: [prometheus, logging]
+        
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, batch, resource]
+          exporters: [loki, logging]
+      
+      telemetry:
+        logs:
+          level: "info"
+        metrics:
+          address: 0.0.0.0:8888
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: monitoring
+  labels:
+    app: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      containers:
+      - name: otel-collector
+        image: otel/opentelemetry-collector-contrib:latest
+        ports:
+        - containerPort: 4317
+        - containerPort: 4318
+        - containerPort: 14268
+        - containerPort: 8889
+        - containerPort: 13133
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/otel-collector-config.yaml
+          subPath: otel-collector.yml
+        command:
+        - /otelcol-contrib
+        - --config=/etc/otel-collector-config.yaml
+      volumes:
+      - name: config-volume
+        configMap:
+          name: otel-collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: monitoring
+  labels:
+    app: otel-collector
+spec:
+  ports:
+  - port: 4317
+    targetPort: 4317
+    name: otlp-grpc
+  - port: 4318
+    targetPort: 4318
+    name: otlp-http
+  - port: 14268
+    targetPort: 14268
+    name: jaeger-http
+  - port: 8889
+    targetPort: 8889
+    name: metrics
+  - port: 13133
+    targetPort: 13133
+    name: health-check
+  selector:
+    app: otel-collector
+  type: ClusterIP
