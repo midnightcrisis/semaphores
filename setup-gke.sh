@@ -5,7 +5,7 @@
 
 set -e
 
-PROJECT_ID="rizzup-de"
+PROJECT_ID="rizzup-dev"
 CLUSTER_NAME="monitoring-cluster"
 REGION="us-central1"
 MONITORING_NAMESPACE="monitoring"

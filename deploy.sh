@@ -5,7 +5,7 @@
 
 set -e
 
-PROJECT_ID="rizzup-de"
+PROJECT_ID="rizzup-dev"
 REGION="us-central1"
 ZONE="us-central1-a"
 MONITORING_NAMESPACE="monitoring"

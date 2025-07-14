@@ -79,7 +79,7 @@ data:
         endpoint: "0.0.0.0:8889"
         const_labels:
           cluster: "gke-cluster"
-          project: "rizzup-de"
+          project: "rizzup-dev"
       
       # Logs to Loki
       loki:

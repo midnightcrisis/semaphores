@@ -33,7 +33,7 @@ The monitoring stack includes:
 
 ## Prerequisites
 
-1. **GCP Project** - Ensure project ID `rizzup-de` exists and is accessible
+1. **GCP Project** - Ensure project ID `rizzup-dev` exists and is accessible
 2. **Terraform** - Version >= 1.0
 3. **Ansible** - For configuration management
 4. **kubectl** - For Kubernetes management
@@ -69,7 +69,7 @@ kubectl apply -f manifests/
 ## Configuration
 
 ### Project Settings
-- **Project ID**: `rizzup-de`
+- **Project ID**: `rizzup-dev`
 - **Monitoring Namespace**: `monitoring`
 - **Default Region**: `us-central1`
 
@@ -140,7 +140,7 @@ After deployment, the following services will be available:
 ### Diagnostic Commands
 ```bash
 # Check VM status
-gcloud compute instances list --project=rizzup-de
+gcloud compute instances list --project=rizzup-dev
 
 # Check container status
 docker-compose ps

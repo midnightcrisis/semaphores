@@ -5,7 +5,7 @@
 
 set -e
 
-PROJECT_ID="rizzup-de"
+PROJECT_ID="rizzup-dev"
 MONITORING_NAMESPACE="monitoring"
 
 # Colors for output

@@ -17,7 +17,7 @@ provider "google" {
 variable "project_id" {
   description = "GCP Project ID"
   type        = string
-  default     = "rizzup-de"
+  default     = "rizzup-dev"
 }
 
 variable "region" {
@@ -103,7 +103,7 @@ resource "google_compute_instance" "monitoring_vm" {
 
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2004-lts"
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
       size  = var.disk_size
     }
   }

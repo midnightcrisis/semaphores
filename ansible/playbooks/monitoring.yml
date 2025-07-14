@@ -3,7 +3,7 @@
   hosts: monitoring
   become: yes
   vars:
-    project_id: "rizzup-de"
+    project_id: "rizzup-dev"
     monitoring_namespace: "monitoring"
     
   tasks:
