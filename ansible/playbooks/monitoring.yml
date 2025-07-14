@@ -1,0 +1,93 @@
+---
+- name: Deploy Monitoring Stack
+  hosts: monitoring
+  become: yes
+  vars:
+    project_id: "rizzup-de"
+    monitoring_namespace: "monitoring"
+    
+  tasks:
+    - name: Create monitoring directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+      loop:
+        - /opt/monitoring
+        - /opt/monitoring/configs
+        - /opt/monitoring/data
+        - /opt/monitoring/data/prometheus
+        - /opt/monitoring/data/grafana
+        - /opt/monitoring/data/loki
+
+    - name: Copy Docker Compose configuration
+      template:
+        src: docker-compose.yml.j2
+        dest: /opt/monitoring/docker-compose.yml
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+      notify: restart monitoring stack
+
+    - name: Copy Prometheus configuration
+      template:
+        src: prometheus.yml.j2
+        dest: /opt/monitoring/configs/prometheus.yml
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+      notify: restart monitoring stack
+
+    - name: Copy Loki configuration
+      template:
+        src: loki.yml.j2
+        dest: /opt/monitoring/configs/loki.yml
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+      notify: restart monitoring stack
+
+    - name: Copy Promtail configuration
+      template:
+        src: promtail.yml.j2
+        dest: /opt/monitoring/configs/promtail.yml
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+      notify: restart monitoring stack
+
+    - name: Copy Grafana provisioning configuration
+      template:
+        src: "{{ item }}"
+        dest: "/opt/monitoring/configs/{{ item | basename | regex_replace('.j2$', '') }}"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+      loop:
+        - grafana-datasources.yml.j2
+        - grafana-dashboards.yml.j2
+      notify: restart monitoring stack
+
+    - name: Copy OpenTelemetry Collector configuration
+      template:
+        src: otel-collector.yml.j2
+        dest: /opt/monitoring/configs/otel-collector.yml
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+      notify: restart monitoring stack
+
+    - name: Start monitoring stack
+      docker_compose:
+        project_src: /opt/monitoring
+        state: present
+      become_user: ubuntu
+
+  handlers:
+    - name: restart monitoring stack
+      docker_compose:
+        project_src: /opt/monitoring
+        restarted: yes
+      become_user: ubuntu
